@@ -1,0 +1,5 @@
+dist/
+bin/
+node_modules/
+coverage/
+src/cli/commands/swarm-new.ts
