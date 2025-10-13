@@ -2,12 +2,12 @@ name: Benchmark Test Suite
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop , experimental]
     paths:
       - 'benchmark/**'
       - '.github/workflows/test-suite.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop , experimental]
     paths:
       - 'benchmark/**'
       - '.github/workflows/test-suite.yml'

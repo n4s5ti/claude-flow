@@ -2,9 +2,9 @@ name: 🔍 Verification Pipeline
 
 on:
   push:
-    branches: [main, develop, alpha-*]
+    branches: [main, develop, alpha-*, experimental]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, experimental]
   workflow_dispatch:
     inputs:
       verification_mode:

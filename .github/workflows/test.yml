@@ -2,9 +2,9 @@ name: Test Suite
 
 on:
   push:
-    branches: [ main, develop, claude-flow-v2.0.0 ]
+    branches: [ main, develop, claude-flow-v2.0.0 , experimental]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop , experimental]
 
 jobs:
   test:

@@ -5,7 +5,7 @@ on:
     workflows: ["🔍 Verification Pipeline", "🎯 Truth Scoring Pipeline", "🔗 Cross-Agent Integration Tests"]
     types: [completed]
   push:
-    branches: [main]
+    branches: [main, experimental]
   schedule:
     - cron: '0 6 * * *'  # Daily at 6 AM UTC
 

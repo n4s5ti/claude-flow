@@ -4,9 +4,9 @@ on:
   workflow_run:
     workflows: ["🔍 Verification Pipeline", "🎯 Truth Scoring Pipeline", "🔗 Cross-Agent Integration Tests"]
     types: [completed]
-    branches: [main, develop]
+    branches: [main, develop, experimental]
   push:
-    branches: [main]
+    branches: [main, experimental]
   workflow_dispatch:
     inputs:
       rollback_target:
