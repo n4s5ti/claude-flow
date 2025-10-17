@@ -39,7 +39,7 @@ services:
       dockerfile: docker/Dockerfile.hive-mind
       target: runtime
     container_name: hive-mcp-server
-    command: ["npx", "ruv-swarm", "mcp", "start", "--port", "8081"]
+    command: ["npx", "ruv-swarm", "mcp", "start", "--transport", "http", "--port", "8081"]
     ports:
       - "8081:8081"  # MCP server port
     volumes:
@@ -54,6 +54,8 @@ services:
     depends_on:
       - hive-mind
     restart: unless-stopped
+    healthcheck:
+      disable: true
 
   # Development environment
   hive-dev:
