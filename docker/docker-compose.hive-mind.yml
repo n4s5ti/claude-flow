@@ -39,9 +39,9 @@ services:
       dockerfile: docker/Dockerfile.hive-mind
       target: runtime
     container_name: hive-mcp-server
-    command: ["npx", "ruv-swarm", "mcp", "start", "--transport", "http", "--port", "8081"]
-    ports:
-      - "8081:8081"  # MCP server port
+    command: ["node", "src/mcp/mcp-server.js"]
+    stdin_open: true
+    tty: true
     volumes:
       - hive-data:/data:ro  # Read-only access to Hive data
       - mcp-config:/app/.claude

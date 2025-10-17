@@ -68,8 +68,8 @@ COPY --chown=hivemind:hivemind package*.json ./
 RUN mkdir -p /data && chown hivemind:hivemind /data
 
 # Create directories for MCP integration
-RUN mkdir -p /app/.claude /app/.claude-flow /app/logs /app/memory /app/coordination && \
-    chown -R hivemind:hivemind /app/.claude /app/.claude-flow /app/logs /app/memory /app/coordination
+RUN mkdir -p /app/.claude /app/.claude-flow /app/.swarm /app/logs /app/memory /app/coordination && \
+    chown -R hivemind:hivemind /app/.claude /app/.claude-flow /app/.swarm /app/logs /app/memory /app/coordination
 
 # Ensure non-root user can write to /app (for PID and runtime files)
 RUN chown hivemind:hivemind /app
