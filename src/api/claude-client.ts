@@ -6,7 +6,6 @@
 import { EventEmitter } from 'events';
 import { ILogger } from '../core/logger.js';
 import { ConfigManager } from '../config/config-manager.js';
-import { getErrorMessage } from '../utils/error-handler.js';
 import { 
   ClaudeAPIError,
   ClaudeInternalServerError,

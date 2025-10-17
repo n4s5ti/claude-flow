@@ -516,4 +516,8 @@ class TruthMonitoringServer extends EventEmitter {
   }
 }
 
+// CommonJS export
 module.exports = TruthMonitoringServer;
+
+// ES module default export compatibility
+module.exports.default = TruthMonitoringServer;
