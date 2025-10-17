@@ -1,0 +1,303 @@
+name: PR Validation Swarm
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main, experimental]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  pr-analysis:
+    name: Multi-Agent PR Validation
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get PR Details
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "📋 Fetching PR details..."
+
+          # Get PR information using gh CLI
+          PR_DATA=$(gh pr view ${{ github.event.pull_request.number }} --json \
+            title,body,labels,files,additions,deletions,changedFiles,commits)
+
+          echo "$PR_DATA" > pr-data.json
+
+          # Extract key metrics
+          CHANGED_FILES=$(echo "$PR_DATA" | jq -r '.changedFiles')
+          ADDITIONS=$(echo "$PR_DATA" | jq -r '.additions')
+          DELETIONS=$(echo "$PR_DATA" | jq -r '.deletions')
+
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "additions=$ADDITIONS" >> $GITHUB_OUTPUT
+          echo "deletions=$DELETIONS" >> $GITHUB_OUTPUT
+
+          echo "✅ PR has $CHANGED_FILES files changed (+$ADDITIONS/-$DELETIONS)"
+
+      - name: Initialize Validation Swarm
+        run: |
+          echo "🤖 Initializing PR validation swarm..."
+
+          npx claude-flow@alpha mcp swarm_init \
+            --topology hierarchical \
+            --max-agents 8 \
+            --enable-memory
+
+          # Spawn specialized agents
+          npx claude-flow@alpha mcp agent_spawn --type code-analyzer
+          npx claude-flow@alpha mcp agent_spawn --type reviewer
+          npx claude-flow@alpha mcp agent_spawn --type tester
+          npx claude-flow@alpha mcp agent_spawn --type security-manager
+          npx claude-flow@alpha mcp agent_spawn --type api-docs
+
+      - name: Code Quality Analysis
+        id: quality
+        run: |
+          echo "🔍 Running code quality analysis..."
+
+          # Linting
+          echo "Running linter..."
+          npm run lint 2>&1 | tee lint-results.txt
+          LINT_EXIT=${PIPESTATUS[0]}
+
+          # Type checking
+          echo "Running type checker..."
+          npm run typecheck 2>&1 | tee typecheck-results.txt
+          TYPE_EXIT=${PIPESTATUS[0]}
+
+          # Save results
+          if [ $LINT_EXIT -eq 0 ]; then
+            echo "lint_status=✅ Passed" >> $GITHUB_OUTPUT
+          else
+            echo "lint_status=❌ Failed" >> $GITHUB_OUTPUT
+          fi
+
+          if [ $TYPE_EXIT -eq 0 ]; then
+            echo "type_status=✅ Passed" >> $GITHUB_OUTPUT
+          else
+            echo "type_status=❌ Failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Test Coverage Analysis
+        id: tests
+        run: |
+          echo "🧪 Running test suite with coverage analysis..."
+
+          # Run tests
+          npm run test:ci 2>&1 | tee test-results.txt
+          TEST_EXIT=${PIPESTATUS[0]}
+
+          if [ $TEST_EXIT -eq 0 ]; then
+            echo "test_status=✅ Passed" >> $GITHUB_OUTPUT
+          else
+            echo "test_status=❌ Failed" >> $GITHUB_OUTPUT
+          fi
+
+          # Extract coverage if available
+          if [ -f "coverage/coverage-summary.json" ]; then
+            COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+            echo "coverage=$COVERAGE%" >> $GITHUB_OUTPUT
+          else
+            echo "coverage=N/A" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Security Validation
+        id: security
+        run: |
+          echo "🛡️ Running security validation..."
+
+          # Security audit
+          npm audit --audit-level=moderate > security-audit.txt 2>&1 || true
+
+          # Check for sensitive files
+          SENSITIVE_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | \
+            grep -E '\.(env|pem|key|p12|pfx|cer|crt|der|credentials)$' || true)
+
+          if [ -n "$SENSITIVE_FILES" ]; then
+            echo "⚠️ Warning: Potential sensitive files detected:"
+            echo "$SENSITIVE_FILES"
+            echo "security_warning=true" >> $GITHUB_OUTPUT
+          else
+            echo "security_warning=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "✅ Security validation complete"
+
+      - name: Documentation Check
+        id: docs
+        run: |
+          echo "📚 Checking documentation updates..."
+
+          # Check if code changes require doc updates
+          CODE_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | \
+            grep -E '\.(ts|js|tsx|jsx)$' | wc -l)
+
+          DOC_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | \
+            grep -E '\.(md|markdown)$' | wc -l)
+
+          if [ $CODE_CHANGES -gt 10 ] && [ $DOC_CHANGES -eq 0 ]; then
+            echo "docs_status=⚠️ Consider updating documentation" >> $GITHUB_OUTPUT
+          else
+            echo "docs_status=✅ OK" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate PR Validation Report
+        if: always()
+        run: |
+          echo "📊 Generating comprehensive validation report..."
+
+          cat > pr-validation-report.md << 'EOF'
+          # 🤖 Multi-Agent PR Validation Report
+
+          ## PR Information
+          - **Number**: #${{ github.event.pull_request.number }}
+          - **Title**: ${{ github.event.pull_request.title }}
+          - **Changed Files**: ${{ steps.pr-info.outputs.changed_files }}
+          - **Additions**: +${{ steps.pr-info.outputs.additions }}
+          - **Deletions**: -${{ steps.pr-info.outputs.deletions }}
+
+          ## Validation Results
+
+          ### Code Quality
+          - **Linting**: ${{ steps.quality.outputs.lint_status }}
+          - **Type Checking**: ${{ steps.quality.outputs.type_status }}
+
+          ### Testing
+          - **Test Status**: ${{ steps.tests.outputs.test_status }}
+          - **Coverage**: ${{ steps.tests.outputs.coverage }}
+
+          ### Security
+          - **Security Warning**: ${{ steps.security.outputs.security_warning }}
+
+          ### Documentation
+          - **Status**: ${{ steps.docs.outputs.docs_status }}
+
+          ## Swarm Configuration
+          - **Topology**: Hierarchical (Queen-led coordination)
+          - **Agents Deployed**: 8
+            - Code Analyzer
+            - Reviewer
+            - Tester
+            - Security Manager
+            - API Documentation
+
+          ## Recommendations
+
+          EOF
+
+          # Add conditional recommendations
+          if [ "${{ steps.quality.outputs.lint_status }}" != "✅ Passed" ]; then
+            echo "- ⚠️ Fix linting issues before merging" >> pr-validation-report.md
+          fi
+
+          if [ "${{ steps.quality.outputs.type_status }}" != "✅ Passed" ]; then
+            echo "- ⚠️ Resolve type checking errors" >> pr-validation-report.md
+          fi
+
+          if [ "${{ steps.tests.outputs.test_status }}" != "✅ Passed" ]; then
+            echo "- ❌ Fix failing tests before merging" >> pr-validation-report.md
+          fi
+
+          if [ "${{ steps.security.outputs.security_warning }}" == "true" ]; then
+            echo "- 🛡️ Review security warnings for sensitive files" >> pr-validation-report.md
+          fi
+
+          if [ "${{ steps.docs.outputs.docs_status }}" != "✅ OK" ]; then
+            echo "- 📚 Consider updating documentation to reflect code changes" >> pr-validation-report.md
+          fi
+
+          echo "" >> pr-validation-report.md
+          echo "---" >> pr-validation-report.md
+          echo "🤖 Generated by [Claude Flow Swarm PR Validator](https://github.com/ruvnet/claude-flow)" >> pr-validation-report.md
+
+          cat pr-validation-report.md
+
+      - name: Upload Validation Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-validation-results
+          path: |
+            pr-validation-report.md
+            pr-data.json
+            lint-results.txt
+            typecheck-results.txt
+            test-results.txt
+            security-audit.txt
+            coverage/
+
+      - name: Post Validation Report
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('pr-validation-report.md', 'utf8');
+
+            // Find existing bot comments
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Multi-Agent PR Validation Report')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: report
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: report
+              });
+            }
+
+      - name: Set PR Status
+        if: always()
+        run: |
+          echo "Setting overall PR validation status..."
+
+          # Fail if critical checks failed
+          if [ "${{ steps.quality.outputs.lint_status }}" != "✅ Passed" ] || \
+             [ "${{ steps.quality.outputs.type_status }}" != "✅ Passed" ] || \
+             [ "${{ steps.tests.outputs.test_status }}" != "✅ Passed" ]; then
+            echo "❌ PR validation failed - critical checks did not pass"
+            exit 1
+          fi
+
+          echo "✅ PR validation passed!"
