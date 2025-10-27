@@ -83,7 +83,7 @@ jobs:
           EOF
 
       - name: Upload session config
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: truth-scoring-config-${{ steps.setup.outputs.scoring-session-id }}
           path: truth-scoring-data/
@@ -194,7 +194,7 @@ jobs:
           "
 
       - name: Upload code accuracy results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: code-accuracy-${{ needs.truth-scoring-setup.outputs.scoring-session-id }}
           path: truth-scoring-data/
@@ -282,7 +282,7 @@ jobs:
           "
 
       - name: Upload test coverage results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-coverage-${{ needs.truth-scoring-setup.outputs.scoring-session-id }}
           path: truth-scoring-data/
@@ -389,7 +389,7 @@ jobs:
           "
 
       - name: Upload performance results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: performance-scoring-${{ needs.truth-scoring-setup.outputs.scoring-session-id }}
           path: truth-scoring-data/
@@ -488,7 +488,7 @@ jobs:
           "
 
       - name: Upload documentation results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: documentation-scoring-${{ needs.truth-scoring-setup.outputs.scoring-session-id }}
           path: truth-scoring-data/
@@ -639,7 +639,7 @@ jobs:
           EOF
 
       - name: Upload final truth score
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: truth-score-final-${{ needs.truth-scoring-setup.outputs.scoring-session-id }}
           path: final-results/
