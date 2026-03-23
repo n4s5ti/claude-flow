@@ -108,7 +108,7 @@ jobs:
           npx audit-ci --config .audit-ci.json || true
 
       - name: Upload security reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: security-reports-${{ needs.setup-verification.outputs.verification-id }}
           path: |
@@ -167,7 +167,7 @@ jobs:
           npx complexity-report --format json --output complexity-report.json src/ || true
 
       - name: Upload quality reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quality-reports-${{ needs.setup-verification.outputs.verification-id }}
           path: |
@@ -231,7 +231,7 @@ jobs:
           
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.os }}-node${{ matrix.node }}-${{ needs.setup-verification.outputs.verification-id }}
           path: |
@@ -334,7 +334,7 @@ jobs:
           node --expose-gc --max-old-space-size=128 dist/cli/main.js --version || true
 
       - name: Upload performance reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: performance-reports-${{ needs.setup-verification.outputs.verification-id }}
           path: |
@@ -386,7 +386,7 @@ jobs:
           cat verification-summary.md
 
       - name: Upload verification summary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verification-summary-${{ needs.setup-verification.outputs.verification-id }}
           path: verification-summary.md
